@@ -132,15 +132,46 @@ def load_user_data():
         accounts[acc_id] = acc
     return user, accounts
 
+# def save_transaction(transaction, account_id):
+#     """Append a single transaction to the CSV file."""
+#     ensure_data_dir()
+#     file_exists = os.path.isfile(TRANSACTIONS_FILE)
+#     with open(TRANSACTIONS_FILE, 'a', newline='') as f:
+#         writer = csv.writer(f)
+#         if not file_exists:
+#             writer.writerow(['account_id', 'amount', 'type', 'description', 'tags', 'timestamp'])
+#         writer.writerow([
+#             account_id,
+#             transaction.amount,
+#             transaction.type,
+#             transaction.description,
+#             '|'.join(transaction.tags),
+#             transaction.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+#         ])
+
 def save_transaction(transaction, account_id):
     """Append a single transaction to the CSV file."""
     ensure_data_dir()
     file_exists = os.path.isfile(TRANSACTIONS_FILE)
+
     with open(TRANSACTIONS_FILE, 'a', newline='') as f:
         writer = csv.writer(f)
+
+        # Write header if file does not exist
         if not file_exists:
-            writer.writerow(['account_id', 'amount', 'type', 'description', 'tags', 'timestamp'])
+            writer.writerow([
+                'transaction_id',
+                'account_id',
+                'amount',
+                'type',
+                'description',
+                'tags',
+                'timestamp'
+            ])
+
+        # Write transaction data
         writer.writerow([
+            transaction.transaction_id,   # ✅ added
             account_id,
             transaction.amount,
             transaction.type,
@@ -151,25 +182,64 @@ def save_transaction(transaction, account_id):
 
 def load_all_transactions(accounts_dict):
     """Read transactions.csv and replay each transaction into the corresponding account.
-       This populates each account's _transactions list and updates balance to match JSON (we trust JSON balance).
-       But we still add transactions to history without modifying balance again.
+       This populates each account's _transactions list without modifying balance again.
     """
     if not os.path.exists(TRANSACTIONS_FILE):
         return
+
     with open(TRANSACTIONS_FILE, 'r') as f:
         reader = csv.DictReader(f)
+
         for row in reader:
             acc_id = row['account_id']
+
             if acc_id not in accounts_dict:
                 continue  # skip orphaned transactions
+
             account = accounts_dict[acc_id]
-            # Recreate transaction
+
+            # Safely parse tags
+            tags = row['tags'].split('|') if row['tags'] else []
+
+            # Recreate Transaction object
             txn = Transaction(
                 amount=float(row['amount']),
                 t_type=row['type'],
                 description=row['description'],
-                tags=row['tags'].split('|') if row['tags'] else [],
-                timestamp=datetime.strptime(row['timestamp'], "%Y-%m-%d %H:%M:%S")
+                tags=tags,
+                timestamp=datetime.strptime(row['timestamp'], "%Y-%m-%d %H:%M:%S"),
+                transaction_id=row['transaction_id']
             )
-            # Add to history without changing balance (balance already set from JSON)
+
+            # Update ID counter to avoid duplicates
+            num = int(row['transaction_id'].replace("TXN", ""))
+            if num > Transaction._id_counter:
+                Transaction._id_counter = num
+
+            # Add transaction to account history
             account._transactions.append(txn)
+
+# def load_all_transactions(accounts_dict):
+#     """Read transactions.csv and replay each transaction into the corresponding account.
+#        This populates each account's _transactions list and updates balance to match JSON (we trust JSON balance).
+#        But we still add transactions to history without modifying balance again.
+#     """
+#     if not os.path.exists(TRANSACTIONS_FILE):
+#         return
+#     with open(TRANSACTIONS_FILE, 'r') as f:
+#         reader = csv.DictReader(f)
+#         for row in reader:
+#             acc_id = row['account_id']
+#             if acc_id not in accounts_dict:
+#                 continue  # skip orphaned transactions
+#             account = accounts_dict[acc_id]
+#             # Recreate transaction
+#             txn = Transaction(
+#                 amount=float(row['amount']),
+#                 t_type=row['type'],
+#                 description=row['description'],
+#                 tags=row['tags'].split('|') if row['tags'] else [],
+#                 timestamp=datetime.strptime(row['timestamp'], "%Y-%m-%d %H:%M:%S")
+#             )
+#             # Add to history without changing balance (balance already set from JSON)
+#             account._transactions.append(txn)

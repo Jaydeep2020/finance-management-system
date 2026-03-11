@@ -41,17 +41,29 @@ class Transaction:
         if len(parts) < 4:
             raise ValueError("Invalid transaction string format")
 
-        amount = float(parts[0])
-        t_type = parts[1]
-        description = parts[2]
-        tags_str = parts[3]
+        # amount = float(parts[0])
+        # t_type = parts[1]
+        # description = parts[2]
+        # tags_str = parts[3]
+        # tags = tags_str.split('|') if tags_str else []
+
+        # timestamp = None
+        # if len(parts) >= 5:
+        #     timestamp = datetime.strptime(parts[4], "%Y-%m-%d %H:%M:%S")
+
+        # return Transaction(amount, t_type, description, tags, timestamp)
+
+        transaction_id = parts[0]
+        amount = float(parts[1])
+        t_type = parts[2]
+        description = parts[3]
+
+        tags_str = parts[4]
         tags = tags_str.split('|') if tags_str else []
 
-        timestamp = None
-        if len(parts) >= 5:
-            timestamp = datetime.strptime(parts[4], "%Y-%m-%d %H:%M:%S")
+        timestamp = datetime.strptime(parts[5], "%Y-%m-%d %H:%M:%S")
 
-        return Transaction(amount, t_type, description, tags, timestamp)
+        return Transaction(amount, t_type, description, tags, timestamp, transaction_id)
 
     @classmethod
     def create(cls, amount, t_type, description, tags=None):
